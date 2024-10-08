@@ -1,16 +1,10 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { asyncHandler } from '../utils/async.util';
-import { AppError } from '../utils/error.util';
-import { UserRole } from '../../features/user/user.types';
+import { NextFunction, Request, Response } from 'express';
 
 import { IUser, User } from '../../features/user/user.model';
-import { TokenBlacklist } from '../../features/auth/tokenBlacklist.model';
-
-interface DecodedToken {
-    userId: string;
-    email: string;
-}
+import { UserRole } from '../../features/user/user.types';
+import TokenService from '../services/token.service';
+import { asyncHandler } from '../utils/async.util';
+import { AppError } from '../utils/error.util';
 
 export interface AuthRequest extends Request {
     user?: {
@@ -21,6 +15,8 @@ export interface AuthRequest extends Request {
 }
 
 export const authMiddleware = asyncHandler(async (req: AuthRequest, res: Response, next: NextFunction) => {
+    const tokenService = new TokenService();
+
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
         throw new AppError('No token provided', 401);
@@ -28,13 +24,13 @@ export const authMiddleware = asyncHandler(async (req: AuthRequest, res: Respons
 
     const token = authHeader.split(' ')[1];
 
-    const isBlacklisted = await TokenBlacklist.findOne({ token });
-    if (isBlacklisted) {
+    const isTokenRevoked = await tokenService.isTokenRevoked(token);
+    if (isTokenRevoked) {
         throw new AppError('Token is invalid or expired', 401);
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as DecodedToken;
+        const decoded = await tokenService.verifyJwtToken(token);
 
         const user = (await User.findById(decoded.userId)) as IUser;
         if (!user) {

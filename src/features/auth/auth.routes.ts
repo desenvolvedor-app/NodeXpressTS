@@ -1,19 +1,19 @@
 // auth.routes.ts
+
 import { Router } from 'express';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
 
-import { validateRequest } from '../../common/middleware/validator.middleware';
 import { loginRateLimiter, passwordResetRateLimiter } from '../../common/middleware/rateLimiter.middleware';
-
+import { validateRequest } from '../../common/middleware/validator.middleware';
+import { AuthController } from './auth.controller';
 import {
     loginSchema,
+    refreshTokenSchema,
     registerSchema,
     requestPasswordResetSchema,
     resetPasswordSchema,
     verifyEmailSchema,
-    refreshTokenSchema,
 } from './auth.schema';
+import { AuthService } from './auth.service';
 
 const router = Router();
 const authService = new AuthService();

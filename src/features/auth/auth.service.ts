@@ -1,29 +1,18 @@
-import { IUser, User } from '../user/user.model';
-
-import { ProfileService } from '../profile/profile.service';
-
-import { LoginDTO, RegisterDTO, TokenPayload, TokenResponse } from './auth.types';
-import { TokenBlacklist } from './tokenBlacklist.model';
-
-import { AppError } from '../../common/utils/error.util';
 import { EmailService } from '../../common/services/email.service';
-
-import {
-    generateTokens,
-    signEmailToken,
-    signResetToken,
-    verifyEmailToken,
-    verifyJwtToken,
-    verifyRefreshToken,
-    verifyResetToken,
-} from '../../common/utils/tokens.utils';
+import TokenService from '../../common/services/token.service';
+import { AppError } from '../../common/utils/error.util';
+import { ProfileService } from '../profile/profile.service';
+import { IUser, User } from '../user/user.model';
+import { LoginDTO, RegisterDTO, TokenPayload, TokenResponse } from './auth.types';
 
 export class AuthService {
     private profileService = new ProfileService();
     private emailService = new EmailService();
+    private tokenService = new TokenService();
+
     private MAX_FAILED_LOGIN_ATTEMPTS = 5;
 
-    async register(userData: RegisterDTO) {
+    async register(userData: RegisterDTO): Promise<{ user: object; accessToken: string; refreshToken: string }> {
         const existingUser = await User.findOne({ email: userData.email });
         if (existingUser) {
             throw new AppError('Email already exists', 400);
@@ -31,7 +20,7 @@ export class AuthService {
 
         const user = await User.create(userData);
         const payload: TokenPayload = { userId: user.id, email: user.email, role: user.role };
-        const tokens = generateTokens(payload);
+        const tokens = await this.tokenService.generateTokens(payload);
 
         await this.profileService.createProfile(user.id);
         await this.sendVerificationEmail(user.email);
@@ -40,15 +29,6 @@ export class AuthService {
             user: { id: user.id, name: user.name, email: user.email },
             ...tokens,
         };
-    }
-
-    async sendVerificationEmail(email: string) {
-        const user = await User.findOne({ email });
-        if (!user) throw new AppError('User not found', 404);
-
-        const verificationToken = signEmailToken({ userId: user.id });
-
-        await this.emailService.sendVerificationEmail(user.email, verificationToken);
     }
 
     async login(loginData: LoginDTO): Promise<TokenResponse> {
@@ -71,7 +51,7 @@ export class AuthService {
             throw new AppError('Invalid email or password', 401);
         }
 
-        const tokens = generateTokens({
+        const tokens = await this.tokenService.generateTokens({
             userId: user._id.toString(),
             email: user.email,
             role: user.role,
@@ -89,36 +69,22 @@ export class AuthService {
         };
     }
 
-    private async handleFailedLogin(user: IUser): Promise<void> {
-        user.failedLoginAttempts += 1;
-
-        if (user.failedLoginAttempts >= this.MAX_FAILED_LOGIN_ATTEMPTS) {
-            user.isLocked = true;
-        }
-
-        await user.save();
-    }
-
-    async refreshToken(refreshToken: string) {
-        const decoded = verifyRefreshToken(refreshToken);
+    async refreshToken(refreshToken: string): Promise<TokenResponse> {
+        const decoded = await this.tokenService.verifyRefreshToken(refreshToken);
 
         const user = await User.findById(decoded.userId);
         if (!user) throw new AppError('User not found', 404);
 
-        await TokenBlacklist.create({
-            token: refreshToken,
-            userId: user._id,
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        });
+        await this.tokenService.revokeAllTokensForUser(decoded.userId); // Revoke all tokens for the user
 
         const payload: TokenPayload = { userId: user.id, email: user.email, role: user.role };
-        return await generateTokens(payload);
+        return await this.tokenService.generateTokens(payload);
     }
 
-    async verifyEmail(token: string) {
+    async verifyEmail(token: string): Promise<void> {
         let decoded;
         try {
-            decoded = verifyEmailToken(token);
+            decoded = await this.tokenService.verifyEmailToken(token);
         } catch {
             throw new AppError('Invalid or expired verification token', 400);
         }
@@ -130,22 +96,31 @@ export class AuthService {
         await user.save();
     }
 
-    async sendPasswordResetToken(email: string) {
+    async sendVerificationEmail(email: string): Promise<void> {
         const user = await User.findOne({ email });
         if (!user) throw new AppError('User not found', 404);
 
-        const resetToken = signResetToken({ userId: user.id });
+        const verificationToken = await this.tokenService.signEmailToken({ userId: user.id });
+
+        await this.emailService.sendVerificationEmail(user.email, verificationToken);
+    }
+
+    async sendPasswordResetToken(email: string): Promise<void> {
+        const user = await User.findOne({ email });
+        if (!user) throw new AppError('User not found', 404);
+
+        const resetToken = await this.tokenService.signResetToken({ userId: user.id });
 
         console.log(resetToken);
 
         await this.emailService.sendPasswordResetEmail(user.email, resetToken);
     }
 
-    async resetPassword(token: string, newPassword: string) {
+    async resetPassword(token: string, newPassword: string): Promise<void> {
         let decoded;
 
         try {
-            decoded = verifyResetToken(token);
+            decoded = await this.tokenService.verifyResetToken(token);
         } catch {
             throw new AppError('Invalid or expired reset token', 400);
         }
@@ -162,14 +137,27 @@ export class AuthService {
     }
 
     async revokeToken(token: string) {
-        if (!token) throw new AppError('User not found', 404);
+        if (!token) throw new AppError('Token not provided', 400);
 
-        const decoded = verifyJwtToken(token);
+        const decoded = await this.tokenService.verifyJwtToken(token);
 
-        await TokenBlacklist.create({
-            token: token,
-            userId: decoded.userId,
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        });
+        const isRevoked = await this.tokenService.isTokenRevoked(token);
+        if (isRevoked) {
+            throw new AppError('Token has been revoked or does not exist', 401);
+        }
+
+        await this.tokenService.revokeAllTokensForUser(decoded.userId);
+    }
+
+    private async handleFailedLogin(user: IUser): Promise<void> {
+        user.failedLoginAttempts += 1;
+
+        if (user.failedLoginAttempts >= this.MAX_FAILED_LOGIN_ATTEMPTS) {
+            user.isLocked = true;
+
+            await this.emailService.sendLockedAccountEmail(user.email);
+        }
+
+        await user.save();
     }
 }

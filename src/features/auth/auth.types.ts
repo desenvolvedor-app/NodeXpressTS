@@ -16,7 +16,7 @@ export interface TokenPayload {
 }
 
 export interface TokenResponse {
-    user: {
+    user?: {
         id: string;
         name: string;
         email: string;
