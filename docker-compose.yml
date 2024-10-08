@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+    api:
+        build: .
+        ports:
+            - '3000:3000'
+        environment:
+            - NODE_ENV=production
+            - MONGODB_URI=mongodb://mongo:27017/app
+            - JWT_SECRET=your-production-secret
+            - JWT_EXPIRES_IN=1d
+            - REFRESH_TOKEN_SECRET=your-production-refresh-secret
+            - REFRESH_TOKEN_EXPIRES_IN=7d
+        depends_on:
+            - mongo
+
+    mongo:
+        image: mongo:latest
+        ports:
+            - '27017:27017'
+        volumes:
+            - mongodb_data:/data/db
+
+volumes:
