@@ -38,13 +38,11 @@ export class ProfileService {
             throw new AppError('Profile not found', 404);
         }
 
-        // If privacy object is missing or some properties are missing, set defaults
         updateData.privacy = {
-            profileVisibility: updateData?.privacy?.profileVisibility || ProfileVisibility.PUBLIC, // Default to 'public'
-            showEmail: updateData?.privacy?.showEmail ?? false, // Default to false
+            profileVisibility: updateData?.privacy?.profileVisibility || ProfileVisibility.PUBLIC,
+            showEmail: updateData?.privacy?.showEmail ?? false,
         };
 
-        // Apply the other profile updates
         Object.assign(profile, updateData);
         await profile.save();
 

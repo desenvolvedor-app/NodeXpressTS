@@ -1,10 +1,8 @@
 import winston from 'winston';
 import path from 'path';
 
-// Define the logs folder path at the root
 const logsDirectory = path.join(__dirname, '../', '../', '../', 'logs');
 
-// Create a Winston logger instance
 export const logger = winston.createLogger({
     level: 'info',
     format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
@@ -14,7 +12,6 @@ export const logger = winston.createLogger({
     ],
 });
 
-// Add console logging for non-production environments
 if (process.env.NODE_ENV !== 'production') {
     logger.add(
         new winston.transports.Console({

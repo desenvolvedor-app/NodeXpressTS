@@ -13,8 +13,8 @@ export const UserProfileSchema = z.object({
         .optional(),
     privacy: z
         .object({
-            profileVisibility: z.nativeEnum(ProfileVisibility).default(ProfileVisibility.PUBLIC), // Default to 'public'
-            showEmail: z.boolean().default(false), // Default to false
+            profileVisibility: z.nativeEnum(ProfileVisibility).default(ProfileVisibility.PUBLIC),
+            showEmail: z.boolean().default(false),
         })
         .optional(),
 });

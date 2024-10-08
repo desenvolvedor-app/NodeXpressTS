@@ -14,3 +14,19 @@ export interface TokenPayload {
     email: string;
     role: UserRole;
 }
+
+export interface TokenResponse {
+    user: {
+        id: string;
+        name: string;
+        email: string;
+        role: UserRole;
+    };
+    accessToken: string;
+    refreshToken: string;
+}
+
+export interface DecodedTokenPayload extends TokenPayload {
+    exp: number;
+    iat: number;
+}

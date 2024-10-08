@@ -36,7 +36,6 @@ export const connectDB = async (): Promise<void> => {
             logger.info('MongoDB reconnected');
         });
 
-        // Graceful shutdown
         process.on('SIGINT', async () => {
             try {
                 await mongoose.connection.close();

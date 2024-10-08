@@ -45,7 +45,6 @@ export class UserService {
         }
     }
 
-    // Missing function to get all users
     async getAllUsers() {
         const users = await User.find().select('-password');
         if (!users) {
@@ -54,7 +53,6 @@ export class UserService {
         return users;
     }
 
-    // Missing function to update the role of a user
     async updateUserRole(userId: string, newRole: UserRoleUpdateDTO['role']) {
         const user = await User.findById(userId);
         if (!user) {

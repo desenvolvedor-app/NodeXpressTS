@@ -9,6 +9,9 @@ export interface IUser extends Document {
     email: string;
     password: string;
     role: UserRole;
+    isEmailVerified: boolean;
+    isLocked: boolean;
+    failedLoginAttempts: number;
     comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -17,11 +20,10 @@ const userSchema = new Schema<IUser>(
         name: { type: String, required: true },
         email: { type: String, required: true, unique: true },
         password: { type: String, required: true },
-        role: {
-            type: String,
-            enum: Object.values(UserRole),
-            default: UserRole.USER,
-        },
+        role: { type: String, enum: Object.values(UserRole), default: UserRole.USER },
+        isEmailVerified: { type: Boolean, default: false },
+        isLocked: { type: Boolean, default: false },
+        failedLoginAttempts: { type: Number, default: 0 },
     },
     { timestamps: true },
 );

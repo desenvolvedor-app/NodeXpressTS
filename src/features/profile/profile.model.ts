@@ -3,7 +3,7 @@ import { UserProfileDocument } from './profile.types';
 
 const UserProfileSchema = new Schema<UserProfileDocument>(
     {
-        userId: { type: Schema.Types.ObjectId, ref: 'User', required: true }, // Correct reference
+        userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         bio: { type: String, default: '' },
         skills: { type: [String], default: [] },
         social_links: {
