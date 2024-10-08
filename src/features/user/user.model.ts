@@ -1,5 +1,5 @@
-import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
+import mongoose, { Document, Schema } from 'mongoose';
 
 import { UserRole } from './user.types';
 
@@ -11,6 +11,7 @@ export interface IUser extends Document {
     role: UserRole;
     isEmailVerified: boolean;
     isLocked: boolean;
+    isActive: boolean;
     failedLoginAttempts: number;
     comparePassword(candidatePassword: string): Promise<boolean>;
 }
@@ -23,6 +24,7 @@ const userSchema = new Schema<IUser>(
         role: { type: String, enum: Object.values(UserRole), default: UserRole.USER },
         isEmailVerified: { type: Boolean, default: false },
         isLocked: { type: Boolean, default: false },
+        isActive: { type: Boolean, default: true },
         failedLoginAttempts: { type: Number, default: 0 },
     },
     { timestamps: true },

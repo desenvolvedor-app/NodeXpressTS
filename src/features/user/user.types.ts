@@ -5,10 +5,15 @@ export enum UserRole {
     MODERATOR = 'MODERATOR',
 }
 
-// DTO for updating user details (name, email)
+export interface CreateUserDTO {
+    name: string;
+    email: string;
+    password: string;
+}
+
 export interface UpdateUserDTO {
-    name?: string;
-    email?: string;
+    name: string;
+    email: string;
 }
 
 // DTO representing the user object

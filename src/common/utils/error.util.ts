@@ -19,3 +19,22 @@ export class AppError extends Error {
         this.name = this.constructor.name;
     }
 }
+
+export class NotFoundError extends Error {
+    statusCode: number;
+
+    constructor(message: string) {
+        super(message);
+        this.statusCode = 404;
+    }
+}
+
+export class ForbiddenError extends Error {
+    statusCode: number;
+
+    constructor(message: string = 'Access denied') {
+        super(message);
+        this.statusCode = 403;
+        Object.setPrototypeOf(this, ForbiddenError.prototype);
+    }
+}

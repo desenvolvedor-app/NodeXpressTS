@@ -1,8 +1,9 @@
 import { z } from 'zod';
+
 import { UserRole } from './user.types';
 
 export const updateUserSchema = z.object({
-    name: z.string().min(2).optional(),
+    name: z.string().min(1, 'Name is required').optional(),
     email: z.string().email().optional(),
 });
 

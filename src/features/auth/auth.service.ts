@@ -2,28 +2,24 @@ import { EmailService } from '../../common/services/email.service';
 import TokenService from '../../common/services/token.service';
 import { AppError } from '../../common/utils/error.util';
 import { ProfileService } from '../profile/profile.service';
-import { IUser, User } from '../user/user.model';
+import { UserService } from '../user/user.service';
 import { LoginDTO, RegisterDTO, TokenPayload, TokenResponse } from './auth.types';
+import { LoginAttemptService } from './login-attempt.service';
 
 export class AuthService {
+    private userService = new UserService();
     private profileService = new ProfileService();
     private emailService = new EmailService();
     private tokenService = new TokenService();
-
-    private MAX_FAILED_LOGIN_ATTEMPTS = 5;
+    private loginAttemptService = new LoginAttemptService();
 
     async register(userData: RegisterDTO): Promise<{ user: object; accessToken: string; refreshToken: string }> {
-        const existingUser = await User.findOne({ email: userData.email });
-        if (existingUser) {
-            throw new AppError('Email already exists', 400);
-        }
-
-        const user = await User.create(userData);
+        const user = await this.userService.createUser(userData);
         const payload: TokenPayload = { userId: user.id, email: user.email, role: user.role };
         const tokens = await this.tokenService.generateTokens(payload);
 
         await this.profileService.createProfile(user.id);
-        await this.sendVerificationEmail(user.email);
+        await this.emailService.sendVerificationEmail(user.id, user.email);
 
         return {
             user: { id: user.id, name: user.name, email: user.email },
@@ -32,24 +28,25 @@ export class AuthService {
     }
 
     async login(loginData: LoginDTO): Promise<TokenResponse> {
-        const user = await User.findOne({ email: loginData.email }).exec();
+        const user = await this.userService.getUserByEmail(loginData.email);
 
         if (!user) {
             throw new AppError('Invalid email or password', 401);
         }
 
-        if (user.isLocked) {
-            throw new AppError(
-                'Account locked due to multiple failed login attempts. Please reset your password.',
-                403,
-            );
+        await this.loginAttemptService.checkAccountLock(user);
+
+        if (!user.isActive) {
+            throw new AppError('Account is inactive. Please contact support.', 403);
         }
 
         const isPasswordCorrect = await user.comparePassword(loginData.password);
         if (!isPasswordCorrect) {
-            await this.handleFailedLogin(user);
+            await this.loginAttemptService.handleFailedLogin(user);
             throw new AppError('Invalid email or password', 401);
         }
+
+        await this.loginAttemptService.resetFailedLoginAttempts(user);
 
         const tokens = await this.tokenService.generateTokens({
             userId: user._id.toString(),
@@ -72,10 +69,15 @@ export class AuthService {
     async refreshToken(refreshToken: string): Promise<TokenResponse> {
         const decoded = await this.tokenService.verifyRefreshToken(refreshToken);
 
-        const user = await User.findById(decoded.userId);
-        if (!user) throw new AppError('User not found', 404);
+        const user = await this.userService.getUserById(decoded.userId);
 
-        await this.tokenService.revokeAllTokensForUser(decoded.userId); // Revoke all tokens for the user
+        await this.loginAttemptService.checkAccountLock(user);
+
+        if (!user.isActive) {
+            throw new AppError('Account is inactive. Please contact support.', 403);
+        }
+
+        await this.tokenService.revokeAllTokensForUser(decoded.userId);
 
         const payload: TokenPayload = { userId: user.id, email: user.email, role: user.role };
         return await this.tokenService.generateTokens(payload);
@@ -89,29 +91,21 @@ export class AuthService {
             throw new AppError('Invalid or expired verification token', 400);
         }
 
-        const user = await User.findById(decoded.userId);
+        const user = await this.userService.getUserById(decoded.userId);
         if (!user) throw new AppError('User not found', 404);
 
         user.isEmailVerified = true;
         await user.save();
     }
 
-    async sendVerificationEmail(email: string): Promise<void> {
-        const user = await User.findOne({ email });
-        if (!user) throw new AppError('User not found', 404);
-
-        const verificationToken = await this.tokenService.signEmailToken({ userId: user.id });
-
-        await this.emailService.sendVerificationEmail(user.email, verificationToken);
-    }
-
     async sendPasswordResetToken(email: string): Promise<void> {
-        const user = await User.findOne({ email });
-        if (!user) throw new AppError('User not found', 404);
+        const user = await this.userService.getUserByEmail(email);
+
+        if (!user.isActive) {
+            throw new AppError('Account is inactive. Please contact support.', 403);
+        }
 
         const resetToken = await this.tokenService.signResetToken({ userId: user.id });
-
-        console.log(resetToken);
 
         await this.emailService.sendPasswordResetEmail(user.email, resetToken);
     }
@@ -125,8 +119,15 @@ export class AuthService {
             throw new AppError('Invalid or expired reset token', 400);
         }
 
-        const user = await User.findById(decoded.userId);
+        const user = await this.userService.getUserById(decoded.userId);
+
         if (!user) throw new AppError('User not found', 404);
+
+        if (!user.isActive) {
+            throw new AppError('Account is inactive. Please contact support.', 403);
+        }
+
+        await this.loginAttemptService.unlockAccount(user);
 
         user.password = newPassword;
 
@@ -147,17 +148,5 @@ export class AuthService {
         }
 
         await this.tokenService.revokeAllTokensForUser(decoded.userId);
-    }
-
-    private async handleFailedLogin(user: IUser): Promise<void> {
-        user.failedLoginAttempts += 1;
-
-        if (user.failedLoginAttempts >= this.MAX_FAILED_LOGIN_ATTEMPTS) {
-            user.isLocked = true;
-
-            await this.emailService.sendLockedAccountEmail(user.email);
-        }
-
-        await user.save();
     }
 }

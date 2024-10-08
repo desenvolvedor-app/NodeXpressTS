@@ -1,15 +1,13 @@
+import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
-import cors from 'cors';
 
-import { errorMiddleware } from './common/middleware/error.middleware';
 import { setupSwagger } from './common/config/swagger';
-
-import { authRoutes } from './features/auth/auth.routes';
-import { userRoutes } from './features/user/user.routes';
-import { profileRoutes } from './features/profile/profile.routes';
-
+import { errorMiddleware } from './common/middleware/error.middleware';
 import { apiRateLimiter } from './common/middleware/rateLimiter.middleware';
+import { authRoutes } from './features/auth/auth.routes';
+import { profileRoutes } from './features/profile/profile.routes';
+import { userRoutes } from './features/user/user.routes';
 
 export const createApp = () => {
     const app = express();

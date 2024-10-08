@@ -1,72 +1,105 @@
+import { NotFoundError } from '../../common/utils/error.util';
 import { User } from './user.model';
-import { AppError } from '../../common/utils/error.util';
-import { UpdateUserDTO, UserRoleUpdateDTO } from './user.types';
+import { CreateUserDTO, UpdateUserDTO, UserRole } from './user.types';
 
 export class UserService {
-    async getUserProfile(userId: string) {
-        const user = await User.findById(userId).select('-password');
+    constructor() {}
+
+    async getAllUsers() {
+        return await User.find();
+    }
+
+    async getUserById(userId: string) {
+        const user = await User.findById(userId);
         if (!user) {
-            throw new AppError('User not found', 404);
+            throw new NotFoundError('User not found');
         }
         return user;
     }
 
-    async updateUser(userId: string, updateData: UpdateUserDTO) {
+    async getUserByEmail(email: string) {
+        const user = await User.findOne({ email });
+        if (!user) {
+            throw new NotFoundError('User not found');
+        }
+        return user;
+    }
+
+    async createUser(userData: CreateUserDTO) {
+        // Add any necessary validations (e.g., password strength, email uniqueness)
+        const existingUser = await User.findOne({ email: userData.email });
+        if (existingUser) {
+            throw new Error('Email already registered');
+        }
+
+        const user = new User(userData);
+        await user.save();
+        return user;
+    }
+
+    async updateUserDetails(userId: string, updatedData: UpdateUserDTO) {
         const user = await User.findById(userId);
         if (!user) {
-            throw new AppError('User not found', 404);
+            throw new NotFoundError('User not found');
         }
 
-        if (updateData.email) {
-            const existingUser = await User.findOne({
-                email: updateData.email,
-                _id: { $ne: userId },
-            });
-            if (existingUser) {
-                throw new AppError('Email already in use', 400);
-            }
-        }
-
-        Object.assign(user, updateData);
+        Object.assign(user, updatedData);
         await user.save();
+        return user;
+    }
 
-        return user.toObject({
-            transform: (_, ret) => {
-                delete ret.password;
-                return ret;
-            },
-        });
+    async deactivateUser(userId: string) {
+        const user = await User.findById(userId);
+        if (!user) {
+            throw new NotFoundError('User not found');
+        }
+
+        if (user.isActive === false) {
+            throw new Error('User is already deactivated');
+        }
+
+        user.isActive = false;
+        await user.save();
+        return user;
+    }
+
+    async activateUser(userId: string) {
+        const user = await User.findById(userId);
+        if (!user) {
+            throw new NotFoundError('User not found');
+        }
+
+        if (user.isActive === true) {
+            throw new Error('User is already active');
+        }
+
+        user.isActive = true;
+        await user.save();
+        return user;
     }
 
     async deleteUser(userId: string) {
-        const result = await User.findByIdAndDelete(userId);
-        if (!result) {
-            throw new AppError('User not found', 404);
-        }
-    }
-
-    async getAllUsers() {
-        const users = await User.find().select('-password');
-        if (!users) {
-            throw new AppError('No users found', 404);
-        }
-        return users;
-    }
-
-    async updateUserRole(userId: string, newRole: UserRoleUpdateDTO['role']) {
         const user = await User.findById(userId);
         if (!user) {
-            throw new AppError('User not found', 404);
+            throw new NotFoundError('User not found');
+        }
+
+        await User.deleteOne({ _id: userId });
+        return { message: 'User account deleted successfully' };
+    }
+
+    async updateUserRole(userId: string, newRole: UserRole) {
+        const user = await User.findById(userId);
+        if (!user) {
+            throw new NotFoundError('User not found');
+        }
+
+        if (!Object.values(UserRole).includes(newRole)) {
+            throw new Error('Invalid role');
         }
 
         user.role = newRole;
         await user.save();
-
-        return user.toObject({
-            transform: (_, ret) => {
-                delete ret.password;
-                return ret;
-            },
-        });
+        return user;
     }
 }

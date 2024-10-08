@@ -1,7 +1,6 @@
 import 'dotenv/config';
 
 import { createApp } from './app';
-
 import { connectDB } from './common/config/database';
 import { logger } from './common/config/logger';
 

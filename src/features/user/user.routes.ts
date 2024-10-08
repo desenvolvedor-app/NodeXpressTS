@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { UserController } from './user.controller';
-import { UserService } from './user.service';
+
 import { authMiddleware, authorizeRoles } from '../../common/middleware/auth.middleware';
 import { validateRequest } from '../../common/middleware/validator.middleware';
-import { updateUserSchema, updateUserRoleSchema } from './user.schema';
+import { UserController } from './user.controller';
+import { updateUserRoleSchema, updateUserSchema } from './user.schema';
+import { UserService } from './user.service';
 import { UserRole } from './user.types';
 
 const router = Router();
@@ -14,9 +15,6 @@ const userController = new UserController(userService);
  * @swagger
  * components:
  *   schemas:
- *     UserRole:
- *       type: string
- *       enum: [USER, ADMIN, MODERATOR]
  *     User:
  *       type: object
  *       properties:
@@ -28,6 +26,22 @@ const userController = new UserController(userService);
  *           type: string
  *         role:
  *           $ref: '#/components/schemas/UserRole'
+ *     UserRole:
+ *       type: string
+ *       enum: [USER, ADMIN, MODERATOR]
+ *     CreateUserDTO:
+ *       type: object
+ *       required:
+ *         - name
+ *         - email
+ *         - password
+ *       properties:
+ *         name:
+ *           type: string
+ *         email:
+ *           type: string
+ *         password:
+ *           type: string
  *     UpdateUserDTO:
  *       type: object
  *       properties:
@@ -42,49 +56,10 @@ const userController = new UserController(userService);
  *       properties:
  *         role:
  *           $ref: '#/components/schemas/UserRole'
+ * tags:
+ *   - name: User
+ *     description: Operations related to users in the system.
  */
-
-/**
- * @swagger
- * /api/users/profile:
- *   get:
- *     tags: [User]
- *     security:
- *       - bearerAuth: []
- *     summary: Get user profile
- *     responses:
- *       200:
- *         description: User profile retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- */
-router.get('/profile', authMiddleware, userController.getProfile);
-
-/**
- * @swagger
- * /api/users/profile:
- *   put:
- *     tags: [User]
- *     security:
- *       - bearerAuth: []
- *     summary: Update user profile
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/UpdateUserDTO'
- *     responses:
- *       200:
- *         description: User profile updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- */
-router.put('/profile', authMiddleware, validateRequest(updateUserSchema), userController.updateProfile);
 
 /**
  * @swagger
@@ -93,7 +68,7 @@ router.put('/profile', authMiddleware, validateRequest(updateUserSchema), userCo
  *     tags: [User]
  *     security:
  *       - bearerAuth: []
- *     summary: Get all users (Admin only)
+ *     summary: Retrieves a list of all users (Admin only)
  *     responses:
  *       200:
  *         description: List of all users
@@ -108,15 +83,125 @@ router.get('/', authMiddleware, authorizeRoles(UserRole.ADMIN), userController.g
 
 /**
  * @swagger
- * /api/users/{userId}/role:
- *   patch:
+ * /api/users/{id}:
+ *   get:
  *     tags: [User]
  *     security:
  *       - bearerAuth: []
- *     summary: Update user role (Admin only)
+ *     summary: Retrieves a specific user's details by their ID (Admin or Self)
  *     parameters:
  *       - in: path
- *         name: userId
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ */
+router.get('/:id', authMiddleware, userController.getUserById);
+
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   put:
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Updates user details by their ID (Admin or Self)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateUserDTO'
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ */
+router.put('/:id', authMiddleware, validateRequest(updateUserSchema), userController.updateUserDetails);
+
+/**
+ * @swagger
+ * /api/users/{id}/deactivate:
+ *   put:
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Deactivates a user account by their ID (Admin or Self)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User account deactivated successfully
+ */
+router.put('/:id/deactivate', authMiddleware, userController.deactivateUser);
+
+/**
+ * @swagger
+ * /api/users/{id}/activate:
+ *   put:
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Reactivates a user account by their ID (Admin or Self)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User account reactivated successfully
+ */
+router.put('/:id/activate', authMiddleware, userController.activateUser);
+
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   delete:
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Deletes a user account by their ID (Admin only)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User deleted successfully
+ */
+router.delete('/:id', authMiddleware, authorizeRoles(UserRole.ADMIN), userController.deleteUser);
+
+/**
+ * @swagger
+ * /api/users/{id}/role:
+ *   put:
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     summary: Updates user role by their ID (Admin only)
+ *     parameters:
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
@@ -129,13 +214,9 @@ router.get('/', authMiddleware, authorizeRoles(UserRole.ADMIN), userController.g
  *     responses:
  *       200:
  *         description: User role updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
  */
-router.patch(
-    '/:userId/role',
+router.put(
+    '/:id/role',
     authMiddleware,
     authorizeRoles(UserRole.ADMIN),
     validateRequest(updateUserRoleSchema),
