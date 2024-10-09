@@ -4,7 +4,7 @@ import helmet from 'helmet';
 
 import { setupSwagger } from './common/config/swagger';
 import { errorMiddleware } from './common/middleware/error.middleware';
-import { apiRateLimiter } from './common/middleware/rateLimiter.middleware';
+import { apiRateLimiter } from './common/middleware/rate-limiter.middleware';
 import { authRoutes } from './features/auth/auth.routes';
 import { profileRoutes } from './features/profile/profile.routes';
 import { userRoutes } from './features/user/user.routes';

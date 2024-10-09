@@ -1,4 +1,5 @@
-// Enum representing user roles
+import mongoose, { Document } from 'mongoose';
+
 export enum UserRole {
     USER = 'USER',
     ADMIN = 'ADMIN',
@@ -27,4 +28,19 @@ export interface UserDTO {
 // DTO for updating user role
 export interface UserRoleUpdateDTO {
     role: UserRole;
+}
+
+export interface IUserDocument extends Document {
+    _id: mongoose.Types.ObjectId;
+    name: string;
+    email: string;
+    password: string;
+    avatar?: string;
+    role: UserRole;
+    isEmailVerified: boolean;
+    isLocked: boolean;
+    isActive: boolean;
+    failedLoginAttempts: number;
+    lastLogin?: Date;
+    comparePassword(candidatePassword: string): Promise<boolean>;
 }

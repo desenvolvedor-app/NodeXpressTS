@@ -2,7 +2,12 @@
 
 import { Router } from 'express';
 
-import { loginRateLimiter, passwordResetRateLimiter } from '../../common/middleware/rateLimiter.middleware';
+import { authMiddleware } from '../../common/middleware/auth.middleware';
+import {
+    loginRateLimiter,
+    passwordResetRateLimiter,
+    verifyEmailRateLimiter,
+} from '../../common/middleware/rate-limiter.middleware';
 import { validateRequest } from '../../common/middleware/validator.middleware';
 import { AuthController } from './auth.controller';
 import {
@@ -178,6 +183,25 @@ router.post(
  *         description: Invalid token or new password
  */
 router.post('/reset-password', validateRequest(resetPasswordSchema), authController.resetPassword);
+
+/**
+ * @swagger
+ * /api/auth/request-verification:
+ *   post:
+ *     summary: Request email verification
+ *     tags:
+ *       - Auth
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Verification email sent successfully
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/request-verification', verifyEmailRateLimiter, authMiddleware, authController.requestEmailVerification);
 
 /**
  * @swagger

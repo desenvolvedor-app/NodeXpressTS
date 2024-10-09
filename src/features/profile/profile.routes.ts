@@ -1,7 +1,9 @@
 import { Router } from 'express';
-import { ProfileController } from './profile.controller';
+
 import { authMiddleware } from '../../common/middleware/auth.middleware';
+import { publicProfileLimiter } from '../../common/middleware/rate-limiter.middleware';
 import { validateRequest } from '../../common/middleware/validator.middleware';
+import { ProfileController } from './profile.controller';
 import { UserProfileSchema } from './profile.schema';
 
 const router = Router();
@@ -16,11 +18,13 @@ const profileController = new ProfileController();
  *       properties:
  *         bio:
  *           type: string
+ *           maxLength: 500
  *           example: "Full Stack Developer"
  *         skills:
  *           type: array
  *           items:
  *             type: string
+ *           maxItems: 20
  *           example: ["JavaScript", "Node.js", "React"]
  *         social_links:
  *           type: object
@@ -33,20 +37,22 @@ const profileController = new ProfileController();
  *               type: string
  *               format: url
  *               example: "https://linkedin.com/in/johndoe"
+ *             twitter:
+ *               type: string
+ *               example: "@johndoe"
  *             website:
  *               type: string
  *               format: url
  *               example: "https://johndoe.dev"
- *         privacy:
- *           type: object
- *           properties:
- *             profileVisibility:
- *               type: string
- *               enum: [public, private]
- *               example: "public"
- *             showEmail:
- *               type: boolean
- *               example: false
+ *         location:
+ *           type: string
+ *           example: "San Francisco"
+ *         jobTitle:
+ *           type: string
+ *           example: "Software Engineer"
+ *         company:
+ *           type: string
+ *           example: "TechCorp"
  */
 
 /**
@@ -125,6 +131,6 @@ router.put('/me', authMiddleware, validateRequest(UserProfileSchema), profileCon
  *       404:
  *         description: Profile not found
  */
-router.get('/:userId', profileController.getPublicProfile);
+router.get('/:userId', publicProfileLimiter, profileController.getPublicProfile);
 
 export const profileRoutes = router;

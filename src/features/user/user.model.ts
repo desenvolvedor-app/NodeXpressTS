@@ -1,43 +1,97 @@
 import bcrypt from 'bcryptjs';
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Model, Schema } from 'mongoose';
 
-import { UserRole } from './user.types';
+import { isValidEmail } from '../../common/utils/validation.util';
+import { IUserDocument, UserRole } from './user.types';
 
-export interface IUser extends Document {
-    _id: string;
-    name: string;
-    email: string;
-    password: string;
-    role: UserRole;
-    isEmailVerified: boolean;
-    isLocked: boolean;
-    isActive: boolean;
-    failedLoginAttempts: number;
+export interface IUserMethods {
     comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
-const userSchema = new Schema<IUser>(
+export interface UserModel extends Model<IUserDocument, object, IUserMethods> {
+    findByEmail(email: string): Promise<IUserDocument | null>;
+}
+
+const userSchema = new Schema<IUserDocument, UserModel, IUserMethods>(
     {
-        name: { type: String, required: true },
-        email: { type: String, required: true, unique: true },
-        password: { type: String, required: true },
-        role: { type: String, enum: Object.values(UserRole), default: UserRole.USER },
+        name: {
+            type: String,
+            required: [true, 'Name is required'],
+            trim: true,
+            minlength: [2, 'Name must be at least 2 characters long'],
+            maxlength: [50, 'Name cannot exceed 50 characters'],
+        },
+        email: {
+            type: String,
+            required: [true, 'Email is required'],
+            unique: true,
+            lowercase: true,
+            trim: true,
+            validate: {
+                validator: isValidEmail,
+                message: 'Invalid email format',
+            },
+        },
+        password: {
+            type: String,
+            required: [true, 'Password is required'],
+            minlength: [8, 'Password must be at least 8 characters long'],
+            select: false,
+        },
+        avatar: {
+            type: String,
+            default: '',
+        },
+        role: {
+            type: String,
+            enum: Object.values(UserRole),
+            default: UserRole.USER,
+        },
         isEmailVerified: { type: Boolean, default: false },
         isLocked: { type: Boolean, default: false },
         isActive: { type: Boolean, default: true },
-        failedLoginAttempts: { type: Number, default: 0 },
+        failedLoginAttempts: {
+            type: Number,
+            default: 0,
+            max: [5, 'Too many failed login attempts. Account will be locked.'],
+        },
+        lastLogin: { type: Date },
     },
-    { timestamps: true },
+    {
+        timestamps: true,
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true },
+    },
 );
+
+userSchema.index({ email: 1 });
+userSchema.index({ role: 1 });
+
+userSchema.virtual('profile', {
+    ref: 'UserProfile',
+    localField: '_id',
+    foreignField: 'userId',
+    justOne: true,
+});
 
 userSchema.pre('save', async function (next) {
     if (!this.isModified('password')) return next();
-    this.password = await bcrypt.hash(this.password, 12);
-    next();
+
+    try {
+        const saltRounds = 12;
+        this.password = await bcrypt.hash(this.password, saltRounds);
+        next();
+    } catch (error) {
+        next(error instanceof Error ? error : new Error('Password hashing failed'));
+    }
 });
 
-userSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
+userSchema.methods.comparePassword = async function (this: IUserDocument, candidatePassword: string): Promise<boolean> {
     return bcrypt.compare(candidatePassword, this.password);
 };
 
-export const User = mongoose.model<IUser>('User', userSchema);
+userSchema.statics.findByEmail = function (email: string) {
+    return this.findOne({ email });
+};
+
+export const User = mongoose.model<IUserDocument, UserModel>('User', userSchema);

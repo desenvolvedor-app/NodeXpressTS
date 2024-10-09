@@ -1,4 +1,6 @@
-import { NotFoundError } from '../../common/utils/error.util';
+import mongoose from 'mongoose';
+
+import { AppError, NotFoundError } from '../../common/utils/error.util';
 import { User } from './user.model';
 import { CreateUserDTO, UpdateUserDTO, UserRole } from './user.types';
 
@@ -9,7 +11,11 @@ export class UserService {
         return await User.find();
     }
 
-    async getUserById(userId: string) {
+    async getUserById(userId: string | mongoose.Types.ObjectId) {
+        if (!mongoose.isValidObjectId(userId)) {
+            throw new AppError('Invalid user ID format', 400); // Invalid ID format
+        }
+
         const user = await User.findById(userId);
         if (!user) {
             throw new NotFoundError('User not found');
@@ -18,6 +24,10 @@ export class UserService {
     }
 
     async getUserByEmail(email: string) {
+        if (!email || typeof email !== 'string') {
+            throw new AppError('Invalid email format', 400); // Ensure valid email
+        }
+
         const user = await User.findOne({ email });
         if (!user) {
             throw new NotFoundError('User not found');
@@ -26,10 +36,9 @@ export class UserService {
     }
 
     async createUser(userData: CreateUserDTO) {
-        // Add any necessary validations (e.g., password strength, email uniqueness)
         const existingUser = await User.findOne({ email: userData.email });
         if (existingUser) {
-            throw new Error('Email already registered');
+            throw new AppError('Email already exists', 409); // 409 Conflict is more appropriate
         }
 
         const user = new User(userData);
@@ -38,6 +47,10 @@ export class UserService {
     }
 
     async updateUserDetails(userId: string, updatedData: UpdateUserDTO) {
+        if (!mongoose.isValidObjectId(userId)) {
+            throw new AppError('Invalid user ID format', 400); // Invalid ID format
+        }
+
         const user = await User.findById(userId);
         if (!user) {
             throw new NotFoundError('User not found');
@@ -49,13 +62,17 @@ export class UserService {
     }
 
     async deactivateUser(userId: string) {
+        if (!mongoose.isValidObjectId(userId)) {
+            throw new AppError('Invalid user ID format', 400); // Invalid ID format
+        }
+
         const user = await User.findById(userId);
         if (!user) {
             throw new NotFoundError('User not found');
         }
 
         if (user.isActive === false) {
-            throw new Error('User is already deactivated');
+            throw new AppError('User is already deactivated', 400); // Bad request
         }
 
         user.isActive = false;
@@ -64,13 +81,17 @@ export class UserService {
     }
 
     async activateUser(userId: string) {
+        if (!mongoose.isValidObjectId(userId)) {
+            throw new AppError('Invalid user ID format', 400); // Invalid ID format
+        }
+
         const user = await User.findById(userId);
         if (!user) {
             throw new NotFoundError('User not found');
         }
 
         if (user.isActive === true) {
-            throw new Error('User is already active');
+            throw new AppError('User is already active', 400); // Bad request
         }
 
         user.isActive = true;
@@ -79,6 +100,10 @@ export class UserService {
     }
 
     async deleteUser(userId: string) {
+        if (!mongoose.isValidObjectId(userId)) {
+            throw new AppError('Invalid user ID format', 400); // Invalid ID format
+        }
+
         const user = await User.findById(userId);
         if (!user) {
             throw new NotFoundError('User not found');
@@ -89,13 +114,17 @@ export class UserService {
     }
 
     async updateUserRole(userId: string, newRole: UserRole) {
+        if (!mongoose.isValidObjectId(userId)) {
+            throw new AppError('Invalid user ID format', 400); // Invalid ID format
+        }
+
         const user = await User.findById(userId);
         if (!user) {
             throw new NotFoundError('User not found');
         }
 
         if (!Object.values(UserRole).includes(newRole)) {
-            throw new Error('Invalid role');
+            throw new AppError('Invalid role', 400); // 400 Bad Request for invalid role
         }
 
         user.role = newRole;

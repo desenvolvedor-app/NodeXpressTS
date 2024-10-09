@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
 import { DecodedTokenPayload, TokenPayload } from '../../features/auth/auth.types';
 import { TokenModel } from '../models/token.model';
@@ -121,7 +122,7 @@ class TokenService {
     }
 
     // Revoke all tokens for a user by marking them revoked in the database
-    async revokeAllTokensForUser(userId: string): Promise<void> {
+    async revokeAllTokensForUser(userId: string | mongoose.Types.ObjectId): Promise<void> {
         await TokenModel.updateMany({ userId, isRevoked: false }, { $set: { isRevoked: true } });
     }
 

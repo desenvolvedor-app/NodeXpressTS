@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import { authMiddleware, authorizeRoles } from '../../common/middleware/auth.middleware';
+import { adminActionLimiter } from '../../common/middleware/rate-limiter.middleware';
 import { validateRequest } from '../../common/middleware/validator.middleware';
 import { UserController } from './user.controller';
 import { updateUserRoleSchema, updateUserSchema } from './user.schema';
@@ -189,7 +190,7 @@ router.put('/:id/activate', authMiddleware, userController.activateUser);
  *       200:
  *         description: User deleted successfully
  */
-router.delete('/:id', authMiddleware, authorizeRoles(UserRole.ADMIN), userController.deleteUser);
+router.delete('/:id', adminActionLimiter, authMiddleware, authorizeRoles(UserRole.ADMIN), userController.deleteUser);
 
 /**
  * @swagger
@@ -217,6 +218,7 @@ router.delete('/:id', authMiddleware, authorizeRoles(UserRole.ADMIN), userContro
  */
 router.put(
     '/:id/role',
+    adminActionLimiter,
     authMiddleware,
     authorizeRoles(UserRole.ADMIN),
     validateRequest(updateUserRoleSchema),

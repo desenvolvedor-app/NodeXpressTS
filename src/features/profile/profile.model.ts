@@ -1,24 +1,68 @@
-import { Schema, model } from 'mongoose';
-import { UserProfileDocument } from './profile.types';
+import mongoose, { Schema } from 'mongoose';
 
-const UserProfileSchema = new Schema<UserProfileDocument>(
+import { IUserProfile } from './profile.types';
+
+const userProfileSchema = new Schema<IUserProfile>(
     {
-        userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-        bio: { type: String, default: '' },
-        skills: { type: [String], default: [] },
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+            unique: true,
+            validate: {
+                validator: async function (v: mongoose.Types.ObjectId) {
+                    const user = await mongoose.model('User').findById(v);
+                    return user !== null;
+                },
+                message: 'Referenced user must exist',
+            },
+        },
+        bio: {
+            type: String,
+            maxlength: [500, 'Bio cannot exceed 500 characters'],
+        },
+        skills: {
+            type: [String],
+            default: [],
+            validate: {
+                validator: function (v: string[]) {
+                    return v.length <= 20;
+                },
+                message: 'Cannot have more than 20 skills',
+            },
+        },
         social_links: {
-            github: { type: String, default: '' },
-            linkedin: { type: String, default: '' },
-            website: { type: String, default: '' },
+            github: {
+                type: String,
+                validate: {
+                    validator: (v: string) => !v || v.startsWith('https://github.com/'),
+                    message: 'Invalid GitHub URL',
+                },
+            },
+            linkedin: {
+                type: String,
+                validate: {
+                    validator: (v: string) => !v || v.startsWith('https://linkedin.com/in/'),
+                    message: 'Invalid LinkedIn URL',
+                },
+            },
+            twitter: String,
+            website: {
+                type: String,
+                validate: {
+                    validator: (v: string) => !v || /^https?:\/\/.+/.test(v),
+                    message: 'Invalid website URL',
+                },
+            },
         },
-        privacy: {
-            profileVisibility: { type: String, enum: ['public', 'private'], default: 'public' },
-            showEmail: { type: Boolean, default: false },
-        },
+        location: String,
+        jobTitle: String,
+        company: String,
     },
-    {
-        timestamps: true,
-    },
+    { timestamps: true },
 );
 
-export const UserProfile = model<UserProfileDocument>('UserProfile', UserProfileSchema);
+userProfileSchema.index({ userId: 1 });
+userProfileSchema.index({ skills: 1 });
+
+export const UserProfile = mongoose.model<IUserProfile>('UserProfile', userProfileSchema);

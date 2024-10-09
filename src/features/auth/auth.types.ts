@@ -1,3 +1,6 @@
+import { Request } from 'express';
+import mongoose from 'mongoose';
+
 import { UserRole } from '../user/user.types';
 
 export interface LoginDTO {
@@ -9,15 +12,23 @@ export interface RegisterDTO extends LoginDTO {
     name: string;
 }
 
+export interface AuthRequest extends Request {
+    user?: {
+        userId: mongoose.Types.ObjectId;
+        email: string;
+        role: UserRole;
+    };
+}
+
 export interface TokenPayload {
-    userId: string;
+    userId: mongoose.Types.ObjectId;
     email: string;
     role: UserRole;
 }
 
 export interface TokenResponse {
     user?: {
-        id: string;
+        id: mongoose.Types.ObjectId;
         name: string;
         email: string;
         role: UserRole;

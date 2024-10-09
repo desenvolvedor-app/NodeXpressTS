@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
-import { ProfileService } from './profile.service';
+
 import { asyncHandler } from '../../common/utils/async.util';
+import { AuthRequest } from '../auth/auth.types';
 import { UserProfileInput } from './profile.schema';
-import { AuthRequest } from '../../common/middleware/auth.middleware';
+import { ProfileService } from './profile.service';
 
 export class ProfileController {
     private profileService = new ProfileService();

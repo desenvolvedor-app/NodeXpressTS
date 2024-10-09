@@ -1,7 +1,10 @@
+import mongoose from 'mongoose';
+
 import { EmailService } from '../../common/services/email.service';
 import TokenService from '../../common/services/token.service';
 import { AppError } from '../../common/utils/error.util';
 import { ProfileService } from '../profile/profile.service';
+import { User } from '../user/user.model';
 import { UserService } from '../user/user.service';
 import { LoginDTO, RegisterDTO, TokenPayload, TokenResponse } from './auth.types';
 import { LoginAttemptService } from './login-attempt.service';
@@ -19,7 +22,7 @@ export class AuthService {
         const tokens = await this.tokenService.generateTokens(payload);
 
         await this.profileService.createProfile(user.id);
-        await this.emailService.sendVerificationEmail(user.id, user.email);
+        await this.sendVerificationEmail(user.id);
 
         return {
             user: { id: user.id, name: user.name, email: user.email },
@@ -28,17 +31,17 @@ export class AuthService {
     }
 
     async login(loginData: LoginDTO): Promise<TokenResponse> {
-        const user = await this.userService.getUserByEmail(loginData.email);
+        const user = await User.findOne({ email: loginData.email }).select('+password');
 
         if (!user) {
             throw new AppError('Invalid email or password', 401);
         }
 
-        await this.loginAttemptService.checkAccountLock(user);
-
         if (!user.isActive) {
             throw new AppError('Account is inactive. Please contact support.', 403);
         }
+
+        await this.loginAttemptService.checkAccountLock(user);
 
         const isPasswordCorrect = await user.comparePassword(loginData.password);
         if (!isPasswordCorrect) {
@@ -49,14 +52,14 @@ export class AuthService {
         await this.loginAttemptService.resetFailedLoginAttempts(user);
 
         const tokens = await this.tokenService.generateTokens({
-            userId: user._id.toString(),
+            userId: user._id,
             email: user.email,
             role: user.role,
         });
 
         return {
             user: {
-                id: user._id.toString(),
+                id: user._id,
                 name: user.name,
                 email: user.email,
                 role: user.role,
@@ -96,6 +99,18 @@ export class AuthService {
 
         user.isEmailVerified = true;
         await user.save();
+    }
+
+    async sendVerificationEmail(userId: string | mongoose.Types.ObjectId): Promise<void> {
+        const user = await this.userService.getUserById(userId);
+
+        if (user.isEmailVerified) {
+            throw new AppError('Email is already verified.', 403);
+        }
+
+        const verificationToken = await this.tokenService.signEmailToken({ userId: user.id });
+
+        await this.emailService.sendVerificationEmail(user.email, verificationToken);
     }
 
     async sendPasswordResetToken(email: string): Promise<void> {

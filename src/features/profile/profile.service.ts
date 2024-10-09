@@ -1,6 +1,8 @@
-import { UserProfile } from './profile.model';
-import { ProfileVisibility, UserProfileDTO } from './profile.types';
+import mongoose from 'mongoose';
+
 import { AppError } from '../../common/utils/error.util';
+import { UserProfile } from './profile.model';
+import { UserProfileDTO } from './profile.types';
 
 export class ProfileService {
     async createProfile(userId: string) {
@@ -12,18 +14,22 @@ export class ProfileService {
         const profile = new UserProfile({
             userId,
             bio: '',
-            skills: [],
-            social_links: {},
-            privacy: {
-                profileVisibility: 'public',
-                showEmail: false,
+            skills: [''],
+            social_links: {
+                github: '',
+                linkedin: '',
+                twitter: '',
+                website: '',
             },
+            location: '',
+            jobTitle: '',
+            company: '',
         });
 
         await profile.save();
     }
 
-    async getProfile(userId: string) {
+    async getProfile(userId: string | mongoose.Types.ObjectId) {
         const profile = await UserProfile.findOne({ userId });
         if (!profile) {
             throw new AppError('Profile not found', 404);
@@ -31,17 +37,14 @@ export class ProfileService {
         return profile;
     }
 
-    async updateProfile(userId: string, updateData: UserProfileDTO) {
+    async updateProfile(userId: string | mongoose.Types.ObjectId, updateData: UserProfileDTO) {
         const profile = await UserProfile.findOne({ userId });
+
+        console.log(updateData, profile);
 
         if (!profile) {
             throw new AppError('Profile not found', 404);
         }
-
-        updateData.privacy = {
-            profileVisibility: updateData?.privacy?.profileVisibility || ProfileVisibility.PUBLIC,
-            showEmail: updateData?.privacy?.showEmail ?? false,
-        };
 
         Object.assign(profile, updateData);
         await profile.save();
@@ -53,10 +56,6 @@ export class ProfileService {
         const profile = await UserProfile.findOne({ userId });
         if (!profile) {
             throw new AppError('Profile not found', 404);
-        }
-
-        if (profile.privacy.profileVisibility === 'private') {
-            throw new AppError('This profile is private', 403);
         }
 
         return profile;

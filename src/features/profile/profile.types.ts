@@ -1,4 +1,4 @@
-import { Document, Types } from 'mongoose';
+import mongoose, { Document } from 'mongoose';
 
 export enum ProfileVisibility {
     PUBLIC = 'public',
@@ -21,13 +21,12 @@ export interface UserProfileDTO {
     };
 }
 
-export interface UserProfileDocument extends Document {
-    userId: Types.ObjectId;
+export interface IUserProfile extends Document {
+    userId: mongoose.Types.ObjectId;
     bio?: string;
-    skills?: string[];
-    social_links?: SocialLinks;
-    privacy: {
-        profileVisibility: ProfileVisibility;
-        showEmail: boolean;
-    };
+    skills: string[];
+    social_links: SocialLinks;
+    location?: string;
+    jobTitle?: string;
+    company?: string;
 }

@@ -1,12 +1,12 @@
 import { EmailService } from '../../common/services/email.service';
 import { AppError } from '../../common/utils/error.util';
-import { IUser } from '../user/user.model';
+import { IUserDocument } from '../user/user.types';
 
 export class LoginAttemptService {
     private MAX_FAILED_LOGIN_ATTEMPTS = 5;
     private emailService = new EmailService();
 
-    async handleFailedLogin(user: IUser): Promise<void> {
+    async handleFailedLogin(user: IUserDocument): Promise<void> {
         user.failedLoginAttempts += 1;
 
         if (user.failedLoginAttempts >= this.MAX_FAILED_LOGIN_ATTEMPTS) {
@@ -18,7 +18,7 @@ export class LoginAttemptService {
         await user.save();
     }
 
-    async resetFailedLoginAttempts(user: IUser): Promise<void> {
+    async resetFailedLoginAttempts(user: IUserDocument): Promise<void> {
         if (user.failedLoginAttempts > 0) {
             user.failedLoginAttempts = 0;
             user.isLocked = false;
@@ -26,7 +26,7 @@ export class LoginAttemptService {
         }
     }
 
-    async unlockAccount(user: IUser): Promise<void> {
+    async unlockAccount(user: IUserDocument): Promise<void> {
         if (user.isLocked) {
             user.isLocked = false;
             user.failedLoginAttempts = 0;
@@ -36,7 +36,7 @@ export class LoginAttemptService {
         }
     }
 
-    checkAccountLock(user: IUser): void {
+    checkAccountLock(user: IUserDocument): void {
         if (user.isLocked) {
             throw new AppError(
                 'Your account is locked due to multiple failed login attempts. Please reset your password.',

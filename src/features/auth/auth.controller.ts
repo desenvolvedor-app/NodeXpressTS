@@ -2,8 +2,9 @@ import { Request, Response } from 'express';
 
 import { asyncHandler } from '../../common/utils/async.util';
 import { AppError } from '../../common/utils/error.util';
+import { extractTokenFromHeader } from '../../common/utils/extract-token.util';
 import { AuthService } from './auth.service';
-import { LoginDTO, RegisterDTO } from './auth.types';
+import { AuthRequest, LoginDTO, RegisterDTO } from './auth.types';
 
 export class AuthController {
     constructor(private authService: AuthService) {}
@@ -21,13 +22,7 @@ export class AuthController {
     });
 
     logout = asyncHandler(async (req: Request, res: Response) => {
-        const authHeader = req.headers.authorization;
-
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            throw new AppError('Authorization token is missing or invalid', 401);
-        }
-
-        const token = authHeader.split(' ')[1];
+        const token = extractTokenFromHeader(req);
 
         await this.authService.revokeToken(token);
 
@@ -46,6 +41,18 @@ export class AuthController {
 
         await this.authService.resetPassword(token, newPassword);
         res.json({ message: 'Password reset successful.' });
+    });
+
+    requestEmailVerification = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+        const user = req.user;
+
+        if (!user) {
+            throw new AppError('User not found', 400);
+        }
+
+        await this.authService.sendVerificationEmail(user.userId);
+
+        res.status(200).json({ message: 'Verification email sent successfully' });
     });
 
     verifyEmail = asyncHandler(async (req: Request, res: Response) => {

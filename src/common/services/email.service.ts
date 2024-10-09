@@ -102,6 +102,8 @@ export class EmailService {
             <p>If the button doesn't work, copy and paste this link:</p>
             <p class="url-text">${verificationUrl}</p>
         `;
+
+        console.log(email);
         await this.sendEmail(email, 'Verify Your Email Address', html);
     }
 
