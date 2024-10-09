@@ -3,17 +3,17 @@ import { Router } from 'express';
 import { authMiddleware } from '../../common/middleware/auth.middleware';
 import { publicProfileLimiter } from '../../common/middleware/rate-limiter.middleware';
 import { validateRequest } from '../../common/middleware/validator.middleware';
-import { ProfileController } from './profile.controller';
-import { UserProfileSchema } from './profile.schema';
+import { UserProfileController } from './user-profile.controller';
+import { UserProfileSchema } from './user-profile.schema';
 
 const router = Router();
-const profileController = new ProfileController();
+const userProfileController = new UserProfileController();
 
 /**
  * @swagger
  * components:
  *   schemas:
- *     UserProfileInput:
+ *     UserProfileInputDTO:
  *       type: object
  *       properties:
  *         bio:
@@ -53,15 +53,18 @@ const profileController = new ProfileController();
  *         company:
  *           type: string
  *           example: "TechCorp"
+ * tags:
+ *   - name: User Profile
+ *     description: API to manage user profile.
  */
 
 /**
  * @swagger
- * /api/profile/me:
+ * /api/user-profile/me:
  *   get:
  *     summary: Get the current user's profile
  *     tags:
- *       - Profile
+ *       - User Profile
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -70,19 +73,19 @@ const profileController = new ProfileController();
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/UserProfileInput'
+ *               $ref: '#/components/schemas/UserProfileInputDTO'
  *       401:
  *         description: Unauthorized
  */
-router.get('/me', authMiddleware, profileController.getProfile);
+router.get('/me', authMiddleware, userProfileController.getProfile);
 
 /**
  * @swagger
- * /api/profile/me:
+ * /api/user-profile/me:
  *   put:
  *     summary: Update the current user's profile
  *     tags:
- *       - Profile
+ *       - User Profile
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -90,28 +93,28 @@ router.get('/me', authMiddleware, profileController.getProfile);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UserProfileInput'
+ *             $ref: '#/components/schemas/UserProfileInputDTO'
  *     responses:
  *       200:
  *         description: Profile updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/UserProfileInput'
+ *               $ref: '#/components/schemas/UserProfileInputDTO'
  *       400:
  *         description: Bad request
  *       401:
  *         description: Unauthorized
  */
-router.put('/me', authMiddleware, validateRequest(UserProfileSchema), profileController.updateProfile);
+router.put('/me', authMiddleware, validateRequest(UserProfileSchema), userProfileController.updateProfile);
 
 /**
  * @swagger
- * /api/profile/{userId}:
+ * /api/user-profile/{userId}:
  *   get:
  *     summary: Get another user's public profile
  *     tags:
- *       - Profile
+ *       - User Profile
  *     parameters:
  *       - in: path
  *         name: userId
@@ -125,12 +128,12 @@ router.put('/me', authMiddleware, validateRequest(UserProfileSchema), profileCon
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/UserProfileInput'
+ *               $ref: '#/components/schemas/UserProfileInputDTO'
  *       403:
  *         description: Profile is private
  *       404:
  *         description: Profile not found
  */
-router.get('/:userId', publicProfileLimiter, profileController.getPublicProfile);
+router.get('/:userId', publicProfileLimiter, userProfileController.getPublicProfile);
 
-export const profileRoutes = router;
+export const userProfileRoutes = router;

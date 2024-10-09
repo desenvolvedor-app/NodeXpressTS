@@ -16,7 +16,7 @@ const userController = new UserController(userService);
  * @swagger
  * components:
  *   schemas:
- *     User:
+ *     UserDTO:
  *       type: object
  *       properties:
  *         id:
@@ -27,7 +27,7 @@ const userController = new UserController(userService);
  *           type: string
  *         role:
  *           $ref: '#/components/schemas/UserRole'
- *     UserRole:
+ *     UserRoleDTO:
  *       type: string
  *       enum: [USER, ADMIN, MODERATOR]
  *     CreateUserDTO:
@@ -59,7 +59,7 @@ const userController = new UserController(userService);
  *           $ref: '#/components/schemas/UserRole'
  * tags:
  *   - name: User
- *     description: Operations related to users in the system.
+ *     description: API to manage user.
  */
 
 /**
@@ -125,7 +125,7 @@ router.get('/:id', authMiddleware, userController.getUserById);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateUserDTO'
+ *             $ref: '#/components/schemas/UpdateUserDTODTO'
  *     responses:
  *       200:
  *         description: User updated successfully

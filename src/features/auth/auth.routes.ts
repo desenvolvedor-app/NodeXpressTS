@@ -85,6 +85,9 @@ const authController = new AuthController(authService);
  *       properties:
  *         refreshToken:
  *           type: string
+ * tags:
+ *   - name: Auth
+ *     description: API to manage auth.
  */
 
 /**

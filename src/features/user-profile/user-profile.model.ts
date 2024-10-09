@@ -1,6 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
 
-import { IUserProfile } from './profile.types';
+import { IUserProfile } from './user-profile.types';
 
 const userProfileSchema = new Schema<IUserProfile>(
     {
@@ -10,9 +10,9 @@ const userProfileSchema = new Schema<IUserProfile>(
             required: true,
             unique: true,
             validate: {
-                validator: async function (v: mongoose.Types.ObjectId) {
-                    const user = await mongoose.model('User').findById(v);
-                    return user !== null;
+                validator: async function (value) {
+                    const user = await mongoose.model('User').findById(value).session(this.$session());
+                    return !!user;
                 },
                 message: 'Referenced user must exist',
             },

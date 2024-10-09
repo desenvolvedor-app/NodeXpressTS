@@ -1,34 +1,10 @@
 import mongoose from 'mongoose';
 
 import { AppError } from '../../common/utils/error.util';
-import { UserProfile } from './profile.model';
-import { UserProfileDTO } from './profile.types';
+import { UserProfile } from './user-profile.model';
+import { UserProfileDTO } from './user-profile.types';
 
-export class ProfileService {
-    async createProfile(userId: string) {
-        const existingProfile = await UserProfile.findOne({ userId });
-        if (existingProfile) {
-            throw new AppError('Profile already exists', 400);
-        }
-
-        const profile = new UserProfile({
-            userId,
-            bio: '',
-            skills: [''],
-            social_links: {
-                github: '',
-                linkedin: '',
-                twitter: '',
-                website: '',
-            },
-            location: '',
-            jobTitle: '',
-            company: '',
-        });
-
-        await profile.save();
-    }
-
+export class UserProfileService {
     async getProfile(userId: string | mongoose.Types.ObjectId) {
         const profile = await UserProfile.findOne({ userId });
         if (!profile) {
@@ -59,5 +35,26 @@ export class ProfileService {
         }
 
         return profile;
+    }
+
+    async createDefaultProfile(userId: string, session: mongoose.ClientSession): Promise<void> {
+        const existingProfile = await UserProfile.findOne({ userId }).session(session);
+        if (existingProfile) {
+            throw new AppError('Profile already exists', 409);
+        }
+
+        console.log(userId, 'userId');
+
+        const defaultProfile = new UserProfile({
+            userId,
+            bio: '',
+            skills: [],
+            social_links: {},
+            location: '',
+            jobTitle: '',
+            company: '',
+        });
+
+        await defaultProfile.save({ session });
     }
 }

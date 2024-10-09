@@ -35,14 +35,16 @@ export class UserService {
         return user;
     }
 
-    async createUser(userData: CreateUserDTO) {
-        const existingUser = await User.findOne({ email: userData.email });
+    async createUser(userData: CreateUserDTO, session: mongoose.ClientSession) {
+        const existingUser = await User.findOne({ email: userData.email }).session(session);
         if (existingUser) {
-            throw new AppError('Email already exists', 409); // 409 Conflict is more appropriate
+            throw new AppError('Email already exists', 409);
         }
 
         const user = new User(userData);
-        await user.save();
+
+        await user.save({ session });
+
         return user;
     }
 

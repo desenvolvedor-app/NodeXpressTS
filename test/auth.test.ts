@@ -118,11 +118,11 @@ describe('Auth API', () => {
 
     // Test access to protected route with valid token
     it('should access a protected route with valid token', async () => {
-        await request(server).get('/api/profile/me').set('Authorization', `Bearer ${accessToken}`).expect(200);
+        await request(server).get('/api/user-profile/me').set('Authorization', `Bearer ${accessToken}`).expect(200);
     });
 
     // Test access to protected route with invalid token
     it('should return 401 for protected route without valid token', async () => {
-        await request(server).get('/api/profile/me').set('Authorization', 'Bearer invalidtoken').expect(401);
+        await request(server).get('/api/user-profile//me').set('Authorization', 'Bearer invalidtoken').expect(401);
     });
 });

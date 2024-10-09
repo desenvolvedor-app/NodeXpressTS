@@ -3,7 +3,9 @@ import mongoose from 'mongoose';
 import { EmailService } from '../../common/services/email.service';
 import TokenService from '../../common/services/token.service';
 import { AppError } from '../../common/utils/error.util';
-import { ProfileService } from '../profile/profile.service';
+import { UserAchievementsService } from '../user-achievements/user-achievements.service';
+import { UserProfileService } from '../user-profile/user-profile.service';
+import { UserSettingsService } from '../user-settings/user-settings.service';
 import { User } from '../user/user.model';
 import { UserService } from '../user/user.service';
 import { LoginDTO, RegisterDTO, TokenPayload, TokenResponse } from './auth.types';
@@ -11,23 +13,47 @@ import { LoginAttemptService } from './login-attempt.service';
 
 export class AuthService {
     private userService = new UserService();
-    private profileService = new ProfileService();
+    private userProfileService = new UserProfileService();
+    private userSettingsService = new UserSettingsService();
+    private userAchievementsService = new UserAchievementsService();
+
     private emailService = new EmailService();
     private tokenService = new TokenService();
     private loginAttemptService = new LoginAttemptService();
 
     async register(userData: RegisterDTO): Promise<{ user: object; accessToken: string; refreshToken: string }> {
-        const user = await this.userService.createUser(userData);
-        const payload: TokenPayload = { userId: user.id, email: user.email, role: user.role };
-        const tokens = await this.tokenService.generateTokens(payload);
+        const session = await mongoose.startSession();
+        session.startTransaction();
 
-        await this.profileService.createProfile(user.id);
-        await this.sendVerificationEmail(user.id);
+        try {
+            const user = await this.userService.createUser(userData, session);
+            const payload: TokenPayload = { userId: user.id, email: user.email, role: user.role };
 
-        return {
-            user: { id: user.id, name: user.name, email: user.email },
-            ...tokens,
-        };
+            const tokens = await this.tokenService.generateTokens(payload);
+
+            await Promise.all([
+                this.userProfileService.createDefaultProfile(user.id, session),
+                this.userSettingsService.createDefaultSettings(user.id, session),
+                this.userAchievementsService.createDefaultAchievements(user.id, session),
+            ]);
+
+            await session.commitTransaction();
+            session.endSession();
+
+            return {
+                user: { id: user.id, name: user.name, email: user.email },
+                ...tokens,
+            };
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+
+            if (error instanceof AppError && error.statusCode === 409) {
+                throw new AppError(error.message, 409);
+            }
+
+            throw new AppError('User registration failed', 500);
+        }
     }
 
     async login(loginData: LoginDTO): Promise<TokenResponse> {
